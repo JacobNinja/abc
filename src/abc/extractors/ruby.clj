@@ -34,7 +34,10 @@
 (defn- assignment-node? [n]
   (type-of? n
             org.jrubyparser.ast.LocalAsgnNode
-            org.jrubyparser.ast.InstAsgnNode))
+            org.jrubyparser.ast.InstAsgnNode
+            org.jrubyparser.ast.GlobalAsgnNode
+            org.jrubyparser.ast.ClassVarAsgnNode
+            org.jrubyparser.ast.AttrAssignNode))
 
 (defn- conditional-node? [n]
   (type-of? n
@@ -42,7 +45,9 @@
             org.jrubyparser.ast.CaseNode))
 
 (defn- branch-node? [n]
-  (instance? org.jrubyparser.ast.FCallNode n))
+  (type-of? n
+            org.jrubyparser.ast.FCallNode
+            org.jrubyparser.ast.CallNode))
 
 ; Source parsing
 
@@ -65,15 +70,18 @@
 (defn- ruby-source [rb [start end]]
   (apply str (take (- end start) (drop start rb))))
 
-(defn- with-source [rb & fks]
-  (fn [root]
-    (reduce (fn [e [f k]]
-              (assoc e k
-                (map (fn [env]
-                       (assoc env :source (ruby-source rb (:range env))))
-                     ((extract f) root))))
-            {}
-            fks)))
+(defn- with-source [rb]
+  (fn [env]
+    (assoc env :source (ruby-source rb (:range env)))))
+
+(defn metrics [src-fn & fks]
+  (fn [n]
+    {:metrics
+     (reduce (fn [e [node-filter k]]
+               (assoc e k (map src-fn ((extract node-filter) n))))
+             {}
+             fks)
+    :method (.getName n)}))
 
 (defn parse-ruby [rb]
   (let [parser (Parser.)
@@ -83,12 +91,13 @@
 (defn parse [rb]
   (let [root (parse-ruby rb)
         defn-nodes (filter-nodes (make-tree root) defn-node?)]
-    (map (with-source rb [assignment-node? :assignments]
-                         [conditional-node? :conditionals]
-                         [branch-node? :branches])
+    (map (metrics (with-source rb)
+                  [assignment-node? :assignments]
+                  [conditional-node? :conditionals]
+                  [branch-node? :branches])
          defn-nodes)))
 
 ;(def ternary (first (rest (rest (make-tree (parse-ruby "foo ? true : false"))))))
 ;(def if-node (first (rest (rest (make-tree (parse-ruby "if foo then true else false end"))))))
 
-(parse-ruby "@bar = 3")
+(parse-ruby "foo.()")

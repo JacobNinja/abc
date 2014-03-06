@@ -10,7 +10,7 @@
 
 (defn make-extract-source [type]
   (fn [code]
-    (map :source (type (first (parse-wrapped code))))))
+    (map :source (type (:metrics (first (parse-wrapped code)))))))
 
 (defn make-check-source [type]
   (let [extract-source (make-extract-source type)]
@@ -31,10 +31,19 @@
 end")
 
 (deftest ruby-extractor-test
+  (testing "method"
+    (is (= "foo"
+           (:method (first (parse-wrapped ""))))))
+
   (testing "assignment"
     (let [check-source (make-check-source :assignments)]
       (check-source "bar = 3")
-      (check-source "@bar = 3")))
+      (check-source "@bar = 3")
+      (check-source "$bar = 3")
+      (check-source "@@bar = 3")
+      (check-source "self.bar = 3")
+      (check-source "Foo.bar = 3")
+      ))
 
   (testing "conditional"
     (let [check-source (make-check-source :conditionals)]
@@ -42,9 +51,14 @@ end")
       (check-source if-condition)
       (check-source "wat unless condition")
       (check-source case-condition)
-      ;(check-source "foo ? true : false") ; Why you no correct source position?
+      ;(check-source "foo ? true : false") ; ? true : false
       ))
 
   (testing "branching"
     (let [check-source (make-check-source :branches)]
-      (check-source "method_call()"))))
+      (check-source "method_call()")
+      (check-source "foo.()")
+      (check-source "Foo.new")
+      (check-source "foo 1, 2, 3")
+      ;(check-source "foo[bar]") ; foo[bar
+      )))
