@@ -2,22 +2,49 @@
   (:require [clojure.test :refer :all]
             [abc.extractors.ruby :refer :all]))
 
-(def ruby
-"def foo
-  bar = 3
-  wat if condition
-  method_call()
+(defn wrap-method [code]
+  (str "def foo" \newline code \newline "end"))
+
+(defn parse-wrapped [code]
+  (parse (wrap-method code)))
+
+(defn make-extract-source [type]
+  (fn [code]
+    (map :source (type (first (parse-wrapped code))))))
+
+(defn make-check-source [type]
+  (let [extract-source (make-extract-source type)]
+    (fn [code]
+      (is (= code (first (extract-source code)))))))
+
+(def if-condition
+"if something
+   stuff
+ else
+   do_not
+ end")
+
+(def case-condition
+"case something
+  when true then false
+  else nil
 end")
 
 (deftest ruby-extractor-test
   (testing "assignment"
-    (is (= [{:line 2 :range [10 17] :source "bar = 3"}]
-           (:assignments (first (parse ruby))))))
+    (let [check-source (make-check-source :assignments)]
+      (check-source "bar = 3")
+      (check-source "@bar = 3")))
 
   (testing "conditional"
-    (is (= [{:line 3 :range [20 36] :source "wat if condition"}]
-           (:conditionals (first (parse ruby))))))
+    (let [check-source (make-check-source :conditionals)]
+      (check-source "wat if condition")
+      (check-source if-condition)
+      (check-source "wat unless condition")
+      (check-source case-condition)
+      ;(check-source "foo ? true : false") ; Why you no correct source position?
+      ))
 
   (testing "branching"
-    (is (= [{:line 4 :range [39 52] :source "method_call()"}]
-           (:branches (first (parse ruby)))))))
+    (let [check-source (make-check-source :branches)]
+      (check-source "method_call()"))))
