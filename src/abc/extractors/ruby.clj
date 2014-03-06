@@ -39,10 +39,18 @@
             org.jrubyparser.ast.ClassVarAsgnNode
             org.jrubyparser.ast.AttrAssignNode))
 
+(def conditional-methods
+  #{"==" "!=" ">=" "<=" ">" "<" "=~" "==~" "<=>"})
+
+(defn- conditional-call? [n]
+  (and (type-of? n org.jrubyparser.ast.CallNode)
+       (conditional-methods (.getName n))))
+
 (defn- conditional-node? [n]
-  (type-of? n
+  (or (type-of? n
             org.jrubyparser.ast.IfNode
-            org.jrubyparser.ast.CaseNode))
+            org.jrubyparser.ast.CaseNode)
+      (conditional-call? n)))
 
 (defn- branch-node? [n]
   (type-of? n
@@ -96,8 +104,3 @@
                   [conditional-node? :conditionals]
                   [branch-node? :branches])
          defn-nodes)))
-
-;(def ternary (first (rest (rest (make-tree (parse-ruby "foo ? true : false"))))))
-;(def if-node (first (rest (rest (make-tree (parse-ruby "if foo then true else false end"))))))
-
-(parse-ruby "foo.()")
