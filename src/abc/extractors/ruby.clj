@@ -53,9 +53,10 @@
       (conditional-call? n)))
 
 (defn- branch-node? [n]
-  (type-of? n
+  (and (type-of? n
             org.jrubyparser.ast.FCallNode
-            org.jrubyparser.ast.CallNode))
+            org.jrubyparser.ast.CallNode)
+       (not (conditional-call? n))))
 
 ; Source parsing
 

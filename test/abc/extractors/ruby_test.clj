@@ -71,10 +71,12 @@ end")
       ))
 
   (testing "branching"
-    (let [check-source (make-check-source :branches)]
+    (let [check-source (make-check-source :branches)
+          extract-source (make-extract-source :branches)]
       (check-source "method_call()")
       (check-source "foo.()")
       (check-source "Foo.new")
       (check-source "foo 1, 2, 3")
       ;(check-source "foo[bar]") ; foo[bar
+      (is (= [] (extract-source "foo != bar")))
       )))
